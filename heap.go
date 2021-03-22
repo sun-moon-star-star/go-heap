@@ -1,11 +1,13 @@
 package heap
 
 type Heap struct {
-	data []int
+	data []interface{}
+
+	less func(i, j interface{}) bool
 }
 
 func (heap *Heap) Less(i, j int) bool {
-	return (heap.data)[i] < (heap.data)[j]
+	return heap.Less(i, j)
 }
 
 func (heap *Heap) Swap(i, j int) {
