@@ -15,6 +15,14 @@ type SyncHeap struct {
 	unfinishedTaskCnt int
 }
 
+func NewSyncHeap(less func(i, j interface{}) bool) *SyncHeap {
+	return &SyncHeap{
+		heap: Heap{
+			less: less,
+		},
+	}
+}
+
 func (heap *SyncHeap) SetMaxLen(maxLen int) {
 	heap.lock.Lock()
 	heap.maxLen = maxLen

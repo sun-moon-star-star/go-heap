@@ -6,8 +6,14 @@ type Heap struct {
 	less func(i, j interface{}) bool
 }
 
+func NewHeap(less func(i, j interface{}) bool) *Heap {
+	return &Heap{
+		less: less,
+	}
+}
+
 func (heap *Heap) Less(i, j int) bool {
-	return heap.Less(i, j)
+	return heap.less(i, j)
 }
 
 func (heap *Heap) Swap(i, j int) {
