@@ -6,7 +6,7 @@ type Heap struct {
 	less func(i, j interface{}) bool
 }
 
-func NewHeap(less func(i, j interface{}) bool) *Heap {
+func New(less func(i, j interface{}) bool) *Heap {
 	return &Heap{
 		less: less,
 	}
