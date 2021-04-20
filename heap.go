@@ -1,4 +1,4 @@
-package heap
+package go_heap
 
 type Heap struct {
 	data []interface{}

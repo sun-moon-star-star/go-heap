@@ -1,4 +1,4 @@
-package heap
+package go_heap
 
 import (
 	"errors"
