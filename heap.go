@@ -13,7 +13,7 @@ func New(less func(i, j interface{}) bool) *Heap {
 }
 
 func (heap *Heap) Less(i, j int) bool {
-	return heap.less(i, j)
+	return heap.less(heap.data[i], heap.data[j])
 }
 
 func (heap *Heap) Swap(i, j int) {
