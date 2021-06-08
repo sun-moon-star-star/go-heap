@@ -8,7 +8,7 @@ type SyncHeap struct {
 	lock sync.Mutex
 	cond *sync.Cond
 
-	heap   Heap
+	heap   *Heap
 	maxLen int
 
 	unfinishedTaskCnt int
@@ -16,111 +16,108 @@ type SyncHeap struct {
 
 func NewSyncHeap(priority func(i, j interface{}) bool) *SyncHeap {
 	heap := &SyncHeap{
-		heap: Heap{
-			priority: priority,
-		},
+		heap: New(priority),
 	}
 	heap.cond = sync.NewCond(&sync.Mutex{})
 	return heap
 }
 
-func (heap *SyncHeap) SetMaxLen(maxLen int) {
-	heap.lock.Lock()
-	heap.maxLen = maxLen
-	heap.lock.Unlock()
+func (syncHeap *SyncHeap) SetMaxLen(maxLen int) {
+	syncHeap.lock.Lock()
+	syncHeap.maxLen = maxLen
+	syncHeap.lock.Unlock()
 }
 
-func (heap *SyncHeap) Push(item interface{}) {
-	heap.cond.L.Lock()
-	for heap.maxLen != -1 && heap.heap.Len() >= heap.maxLen {
-		heap.cond.Wait()
+func (syncHeap *SyncHeap) Push(item interface{}) {
+	syncHeap.cond.L.Lock()
+	for syncHeap.maxLen != -1 && syncHeap.heap.Len() >= syncHeap.maxLen {
+		syncHeap.cond.Wait()
 	}
 
-	heap.heap.Push(item)
-	heap.unfinishedTaskCnt++
-	heap.cond.Signal()
+	syncHeap.heap.Push(item)
+	syncHeap.unfinishedTaskCnt++
+	syncHeap.cond.Signal()
 
-	heap.cond.L.Unlock()
+	syncHeap.cond.L.Unlock()
 }
 
-func (heap *SyncHeap) TryPush(item interface{}) bool {
-	if heap.maxLen != -1 && heap.heap.Len() >= heap.maxLen {
+func (syncHeap *SyncHeap) TryPush(item interface{}) bool {
+	if syncHeap.maxLen != -1 && syncHeap.heap.Len() >= syncHeap.maxLen {
 		return false
 	}
 
-	heap.cond.L.Lock()
-	defer heap.cond.L.Unlock()
-	for heap.maxLen != -1 && heap.heap.Len() >= heap.maxLen {
+	syncHeap.cond.L.Lock()
+	defer syncHeap.cond.L.Unlock()
+	for syncHeap.maxLen != -1 && syncHeap.heap.Len() >= syncHeap.maxLen {
 		return false
 	}
 
-	heap.heap.Push(item)
-	heap.unfinishedTaskCnt++
-	heap.cond.Signal()
+	syncHeap.heap.Push(item)
+	syncHeap.unfinishedTaskCnt++
+	syncHeap.cond.Signal()
 
 	return true
 }
 
-func (heap *SyncHeap) Top() (interface{}, bool) {
-	if heap.heap.Len() == 0 {
+func (syncHeap *SyncHeap) Top() (interface{}, bool) {
+	if syncHeap.heap.Len() == 0 {
 		return nil, false
 	}
 
-	heap.cond.L.Lock()
-	defer heap.cond.L.Unlock()
-	return heap.heap.Top()
+	syncHeap.cond.L.Lock()
+	defer syncHeap.cond.L.Unlock()
+	return syncHeap.heap.Top()
 }
 
-func (heap *SyncHeap) Remove() (interface{}, bool) {
-	heap.cond.L.Lock()
-	for heap.heap.Len() == 0 && heap.unfinishedTaskCnt > 0 {
-		heap.cond.Wait()
+func (syncHeap *SyncHeap) Remove() (interface{}, bool) {
+	syncHeap.cond.L.Lock()
+	for syncHeap.heap.Len() == 0 && syncHeap.unfinishedTaskCnt > 0 {
+		syncHeap.cond.Wait()
 	}
 
-	if heap.unfinishedTaskCnt <= 0 {
-		heap.cond.L.Unlock()
+	if syncHeap.unfinishedTaskCnt <= 0 {
+		syncHeap.cond.L.Unlock()
 		return nil, false
 	}
 
-	item := heap.heap.Pop()
-	heap.cond.L.Unlock()
-	return item, true
+	item, exist := syncHeap.heap.Pop()
+	syncHeap.cond.L.Unlock()
+	return item, exist
 }
 
-func (heap *SyncHeap) TryRemove() (interface{}, bool) {
-	heap.cond.L.Lock()
-	defer heap.cond.L.Unlock()
-	if heap.heap.Len() == 0 {
+func (syncHeap *SyncHeap) TryRemove() (interface{}, bool) {
+	syncHeap.cond.L.Lock()
+	defer syncHeap.cond.L.Unlock()
+	for syncHeap.heap.Len() == 0 {
 		return nil, false
 	}
 
-	item := heap.heap.Pop()
-	return item, true
+	return syncHeap.heap.Pop()
 }
 
-func (heap *SyncHeap) Len() int {
+func (syncHeap *SyncHeap) Len() int {
 	var len int
-	heap.lock.Lock()
-	len = heap.heap.Len()
-	heap.lock.Unlock()
+	syncHeap.lock.Lock()
+	len = syncHeap.heap.Len()
+	syncHeap.lock.Unlock()
 	return len
 }
 
-func (heap *SyncHeap) TaskDone() {
-	heap.cond.L.Lock()
-	newCnt := heap.unfinishedTaskCnt - 1
-	heap.unfinishedTaskCnt = newCnt
-	heap.cond.L.Unlock()
+func (syncHeap *SyncHeap) TaskDone() {
+	syncHeap.cond.L.Lock()
+	newCnt := syncHeap.unfinishedTaskCnt - 1
+	syncHeap.unfinishedTaskCnt = newCnt
+	syncHeap.cond.L.Unlock()
 
 	if newCnt <= 0 {
-		heap.cond.Broadcast()
+		syncHeap.cond.Broadcast()
 	}
 }
 
-func (heap *SyncHeap) Join() {
-	heap.cond.L.Lock()
-	for heap.unfinishedTaskCnt > 0 {
-		heap.cond.Wait()
+func (syncHeap *SyncHeap) Join() {
+	syncHeap.cond.L.Lock()
+	for syncHeap.unfinishedTaskCnt > 0 {
+		syncHeap.cond.Wait()
 	}
-	heap.cond.L.Unlock()
+	syncHeap.cond.L.Unlock()
 }

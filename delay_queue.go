@@ -28,21 +28,20 @@ func SetGlobalDelayQueue(queue *DelayQueue) error {
 
 type DelayQueue struct {
 	isAllowedPush bool
+	isStopping    bool
 	isRunning     bool
 
 	lock sync.Mutex
 	cond *sync.Cond
 
-	heap   Heap
+	heap   *Heap
 	maxLen int
 }
 
 func NewDelayQueue(priority func(i, j interface{}) bool) *DelayQueue {
 	queue := &DelayQueue{
 		isAllowedPush: true,
-		heap: Heap{
-			priority: priority,
-		},
+		heap:          New(priority),
 	}
 	queue.cond = sync.NewCond(&sync.Mutex{})
 	return queue
@@ -61,7 +60,7 @@ func (queue *DelayQueue) Push(item *Task) {
 	}
 
 	queue.heap.Push(item)
-	queue.cond.Signal()
+	queue.cond.Broadcast()
 
 	queue.cond.L.Unlock()
 }
@@ -78,7 +77,7 @@ func (queue *DelayQueue) TryPush(item *Task) bool {
 	}
 
 	queue.heap.Push(item)
-	queue.cond.Signal()
+	queue.cond.Broadcast()
 
 	return true
 }
@@ -112,46 +111,67 @@ func (queue *DelayQueue) Join() {
 
 func (queue *DelayQueue) End() {
 	queue.isAllowedPush = false
-	queue.cond.Signal()
+	queue.cond.Broadcast()
 }
 
 func (queue *DelayQueue) EndNow() {
 	queue.isAllowedPush = false
-	queue.isRunning = false
-	queue.cond.Signal()
+	queue.isStopping = true
+	queue.cond.Broadcast()
 }
 
-func (queue *DelayQueue) Begin() {
+func (queue *DelayQueue) Run() {
 	queue.isRunning = true
 	var task *Task
 
-	for queue.isRunning {
+	for !queue.isStopping {
 		queue.cond.L.Lock()
-		for queue.isRunning {
+		for !queue.isStopping {
 			for queue.heap.Len() == 0 && queue.isAllowedPush {
 				queue.cond.Wait()
 			}
 
-			if !queue.isRunning || queue.heap.Len() == 0 {
+			if queue.isStopping || queue.heap.Len() == 0 {
 				queue.cond.L.Unlock()
+				queue.isRunning = false
+				queue.cond.Broadcast()
 				return
 			}
 
 			value, ok := queue.heap.Top()
 			if ok && value.(*Task).RunUnixNano <= time.Now().UnixNano() {
-				task = queue.heap.Pop().(*Task)
+				value, _ = queue.heap.Pop()
+				task = value.(*Task)
 				queue.cond.L.Unlock()
 				break
-			} else if queue.isRunning {
-				queue.cond.Wait()
+			} else if !queue.isStopping {
+				unixNano := (value.(*Task).RunUnixNano - time.Now().UnixNano() + 10)
+				if unixNano > 0 {
+					go func() {
+						select {
+						case <-time.After(time.Duration(unixNano * int64(time.Nanosecond))):
+							queue.cond.Broadcast()
+						}
+					}()
+					queue.cond.Wait()
+				}
 			} else {
 				queue.cond.L.Unlock()
+				queue.isRunning = false
+				queue.cond.Broadcast()
 				return
 			}
 		}
 
-		if queue.isRunning {
+		if !queue.isStopping {
 			task.CallBack(task.Data)
 		}
 	}
+	queue.isRunning = false
+	queue.cond.Broadcast()
+}
+
+func (queue *DelayQueue) Begin() {
+	queue.isRunning = true
+	go queue.Run()
 }
