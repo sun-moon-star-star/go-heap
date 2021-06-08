@@ -1,7 +1,6 @@
 package go_heap
 
 import (
-	"errors"
 	"sync"
 )
 
@@ -16,11 +15,13 @@ type SyncHeap struct {
 }
 
 func NewSyncHeap(priority func(i, j interface{}) bool) *SyncHeap {
-	return &SyncHeap{
+	heap := &SyncHeap{
 		heap: Heap{
 			priority: priority,
 		},
 	}
+	heap.cond = sync.NewCond(&sync.Mutex{})
+	return heap
 }
 
 func (heap *SyncHeap) SetMaxLen(maxLen int) {
@@ -29,19 +30,45 @@ func (heap *SyncHeap) SetMaxLen(maxLen int) {
 	heap.lock.Unlock()
 }
 
-func (heap *SyncHeap) Append(item interface{}) error {
-	var err error
+func (heap *SyncHeap) Push(item interface{}) {
 	heap.cond.L.Lock()
-	if heap.maxLen != -1 && heap.heap.Len() >= heap.maxLen {
-		err = errors.New("Heap is full")
-	} else {
-		heap.heap.Push(item)
-		heap.unfinishedTaskCnt++
-		heap.cond.Signal()
-		err = nil
+	for heap.maxLen != -1 && heap.heap.Len() >= heap.maxLen {
+		heap.cond.Wait()
 	}
+
+	heap.heap.Push(item)
+	heap.unfinishedTaskCnt++
+	heap.cond.Signal()
+
 	heap.cond.L.Unlock()
-	return err
+}
+
+func (heap *SyncHeap) TryPush(item interface{}) bool {
+	if heap.maxLen != -1 && heap.heap.Len() >= heap.maxLen {
+		return false
+	}
+
+	heap.cond.L.Lock()
+	defer heap.cond.L.Unlock()
+	for heap.maxLen != -1 && heap.heap.Len() >= heap.maxLen {
+		return false
+	}
+
+	heap.heap.Push(item)
+	heap.unfinishedTaskCnt++
+	heap.cond.Signal()
+
+	return true
+}
+
+func (heap *SyncHeap) Top() (interface{}, bool) {
+	if heap.heap.Len() == 0 {
+		return nil, false
+	}
+
+	heap.cond.L.Lock()
+	defer heap.cond.L.Unlock()
+	return heap.heap.Top()
 }
 
 func (heap *SyncHeap) Remove() interface{} {
@@ -58,6 +85,17 @@ func (heap *SyncHeap) Remove() interface{} {
 	item := heap.heap.Pop()
 	heap.cond.L.Unlock()
 	return item
+}
+
+func (heap *SyncHeap) TryRemove() (interface{}, bool) {
+	heap.cond.L.Lock()
+	defer heap.cond.L.Unlock()
+	for heap.heap.Len() == 0 {
+		return nil, false
+	}
+
+	item := heap.heap.Pop()
+	return item, true
 }
 
 func (heap *SyncHeap) Len() int {

@@ -14,14 +14,17 @@ func (t *TaskQueue) Push(task interface{}) {
 	heap.Push(t.heap, task)
 }
 
-func (t *TaskQueue) Pop() interface{} {
-	return heap.Pop(t.heap)
+func (t *TaskQueue) Pop() (interface{}, bool) {
+	if t.Len() == 0 {
+		return nil, false
+	}
+	return heap.Pop(t.heap), true
 }
 
 func (t *TaskQueue) Len() int {
 	return t.heap.Len()
 }
 
-func (t *TaskQueue) Top() interface{} {
+func (t *TaskQueue) Top() (interface{}, bool) {
 	return t.heap.Top()
 }

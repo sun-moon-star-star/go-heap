@@ -12,11 +12,11 @@ func New(priority func(i, j interface{}) bool) *Heap {
 	}
 }
 
-func (heap *Heap) Top() interface{} {
+func (heap *Heap) Top() (interface{}, bool) {
 	if heap.Len() == 0 {
-		return nil
+		return nil, false
 	}
-	return heap.data[0]
+	return heap.data[0], true
 }
 
 func (heap *Heap) Less(i, j int) bool {
@@ -32,6 +32,9 @@ func (heap *Heap) Len() int {
 }
 
 func (heap *Heap) Pop() (v interface{}) {
+	if heap.Len() == 0 {
+		return nil
+	}
 	heap.data, v = (heap.data)[:heap.Len()-1], (heap.data)[heap.Len()-1]
 	return
 }
