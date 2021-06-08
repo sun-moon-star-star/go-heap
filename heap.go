@@ -3,17 +3,24 @@ package go_heap
 type Heap struct {
 	data []interface{}
 
-	less func(i, j interface{}) bool
+	priority func(i, j interface{}) bool
 }
 
-func New(less func(i, j interface{}) bool) *Heap {
+func New(priority func(i, j interface{}) bool) *Heap {
 	return &Heap{
-		less: less,
+		priority: priority,
 	}
 }
 
+func (heap *Heap) Top() interface{} {
+	if heap.Len() == 0 {
+		return nil
+	}
+	return heap.data[0]
+}
+
 func (heap *Heap) Less(i, j int) bool {
-	return heap.less(heap.data[i], heap.data[j])
+	return heap.priority(heap.data[i], heap.data[j])
 }
 
 func (heap *Heap) Swap(i, j int) {

@@ -15,10 +15,10 @@ type SyncHeap struct {
 	unfinishedTaskCnt int
 }
 
-func NewSyncHeap(less func(i, j interface{}) bool) *SyncHeap {
+func NewSyncHeap(priority func(i, j interface{}) bool) *SyncHeap {
 	return &SyncHeap{
 		heap: Heap{
-			less: less,
+			priority: priority,
 		},
 	}
 }
