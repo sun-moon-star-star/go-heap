@@ -71,7 +71,7 @@ func (heap *SyncHeap) Top() (interface{}, bool) {
 	return heap.heap.Top()
 }
 
-func (heap *SyncHeap) Remove() interface{} {
+func (heap *SyncHeap) Remove() (interface{}, bool) {
 	heap.cond.L.Lock()
 	for heap.heap.Len() == 0 && heap.unfinishedTaskCnt > 0 {
 		heap.cond.Wait()
@@ -79,18 +79,18 @@ func (heap *SyncHeap) Remove() interface{} {
 
 	if heap.unfinishedTaskCnt <= 0 {
 		heap.cond.L.Unlock()
-		return nil
+		return nil, false
 	}
 
 	item := heap.heap.Pop()
 	heap.cond.L.Unlock()
-	return item
+	return item, true
 }
 
 func (heap *SyncHeap) TryRemove() (interface{}, bool) {
 	heap.cond.L.Lock()
 	defer heap.cond.L.Unlock()
-	for heap.heap.Len() == 0 {
+	if heap.heap.Len() == 0 {
 		return nil, false
 	}
 

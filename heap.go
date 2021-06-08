@@ -32,13 +32,10 @@ func (heap *Heap) Len() int {
 }
 
 func (heap *Heap) Pop() (v interface{}) {
-	if heap.Len() == 0 {
-		return nil
-	}
 	heap.data, v = (heap.data)[:heap.Len()-1], (heap.data)[heap.Len()-1]
 	return
 }
 
 func (heap *Heap) Push(v interface{}) {
-	heap.data = append(heap.data, v.(int))
+	heap.data = append(heap.data, v)
 }
