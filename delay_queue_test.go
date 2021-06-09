@@ -6,10 +6,7 @@ import (
 )
 
 func TestDelayQueue(t *testing.T) {
-	priority := func(i, j interface{}) bool {
-		return i.(*Task).RunUnixNano < j.(*Task).RunUnixNano
-	}
-	queue := NewDelayQueue(priority)
+	queue := NewDelayQueue()
 	queue.SetMaxLen(-1)
 	var arr []int
 

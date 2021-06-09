@@ -38,7 +38,11 @@ type DelayQueue struct {
 	maxLen int
 }
 
-func NewDelayQueue(priority func(i, j interface{}) bool) *DelayQueue {
+func NewDelayQueue() *DelayQueue {
+	priority := func(i, j interface{}) bool {
+		return i.(*Task).RunUnixNano < j.(*Task).RunUnixNano
+	}
+
 	queue := &DelayQueue{
 		isAllowedPush: true,
 		heap:          New(priority),
