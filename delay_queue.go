@@ -131,6 +131,15 @@ func (queue *DelayQueue) Push(item *Task) {
 	queue.cond.L.Unlock()
 }
 
+func (queue *DelayQueue) PushPeriodTask(item *Task, period string) error {
+	periodTask, err := GetPeriodTask(queue, period, item)
+	if err != nil {
+		return err
+	}
+	queue.Push(periodTask)
+	return nil
+}
+
 func (queue *DelayQueue) TryPush(item *Task) bool {
 	if queue.maxLen != -1 && queue.heap.Len() >= queue.maxLen {
 		return false
@@ -146,6 +155,14 @@ func (queue *DelayQueue) TryPush(item *Task) bool {
 	queue.cond.Broadcast()
 
 	return true
+}
+
+func (queue *DelayQueue) TryPushPeriodTask(item *Task, period string) (error, bool) {
+	periodTask, err := GetPeriodTask(queue, period, item)
+	if err != nil {
+		return err, false
+	}
+	return nil, queue.TryPush(periodTask)
 }
 
 func (queue *DelayQueue) Top() (*Task, bool) {
