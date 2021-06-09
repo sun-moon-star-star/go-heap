@@ -4,12 +4,74 @@ import (
 	"errors"
 	"sync"
 	"time"
+
+	"github.com/robfig/cron/v3"
 )
 
 type Task struct {
 	RunUnixNano int64
 	Data        interface{}
 	CallBack    func(interface{})
+}
+
+type PeriodTask struct {
+	Queue    *DelayQueue
+	Schedule cron.Schedule
+
+	RawData     interface{}
+	RawCallBack func(interface{})
+	Period      string
+}
+
+var globalParser cron.Parser
+
+func init() {
+	globalParser = cron.NewParser(cron.Second | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.DowOptional | cron.Descriptor)
+}
+
+func (t *PeriodTask) GetNextRunUnixNano() int64 {
+	return t.Schedule.Next(time.Now()).UnixNano()
+}
+
+func periodTaskCallBack(data interface{}) {
+	t := data.(*PeriodTask)
+
+	t.RawCallBack(t.RawData)
+
+	runUnixNano := t.GetNextRunUnixNano()
+	if runUnixNano > 0 {
+		t.Queue.Push(&Task{
+			RunUnixNano: runUnixNano,
+			Data: &PeriodTask{
+				Queue:       t.Queue,
+				Schedule:    t.Schedule,
+				RawData:     t.RawData,
+				RawCallBack: t.RawCallBack,
+				Period:      t.Period,
+			},
+			CallBack: periodTaskCallBack,
+		})
+	}
+}
+
+func GetPeriodTask(queue *DelayQueue, period string, task *Task) (*Task, error) {
+	schedule, err := globalParser.Parse(period)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Task{
+		RunUnixNano: task.RunUnixNano,
+		Data: &PeriodTask{
+			Queue:    queue,
+			Schedule: schedule,
+
+			RawData:     task.Data,
+			RawCallBack: task.CallBack,
+			Period:      period,
+		},
+		CallBack: periodTaskCallBack,
+	}, nil
 }
 
 var globalDelayQueue *DelayQueue

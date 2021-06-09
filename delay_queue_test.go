@@ -37,6 +37,17 @@ func TestDelayQueue(t *testing.T) {
 		},
 	})
 
+	periodTask, err := GetPeriodTask(queue, "*/3 * * * * *", &Task{
+		RunUnixNano: time.Now().UnixNano(),
+		CallBack: func(interface{}) {
+			t.Log("hello", time.Now())
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	queue.Push(periodTask)
+
 	queue.End()
 	queue.Join()
 	if len(arr) != 4 || arr[0] != 1 || arr[1] != 3 || arr[2] != 2 || arr[3] != 4 {
