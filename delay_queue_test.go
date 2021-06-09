@@ -10,6 +10,7 @@ func TestDelayQueue(t *testing.T) {
 	queue.SetMaxLen(-1)
 	var arr []int
 
+	queue.Begin()
 	queue.Push(&Task{
 		RunUnixNano: time.Now().UnixNano() + 0,
 		CallBack: func(interface{}) {
@@ -17,7 +18,6 @@ func TestDelayQueue(t *testing.T) {
 		},
 	})
 
-	queue.Begin()
 	queue.Push(&Task{
 		RunUnixNano: time.Now().UnixNano() + 100000,
 		CallBack: func(interface{}) {
@@ -37,7 +37,7 @@ func TestDelayQueue(t *testing.T) {
 		},
 	})
 
-	periodTask, err := GetPeriodTask(queue, "*/3 * * * * *", &Task{
+	periodTask, err := GetPeriodTask(queue, "00,20,30 07 11 * * *", &Task{
 		RunUnixNano: time.Now().UnixNano(),
 		CallBack: func(interface{}) {
 			t.Log("hello", time.Now())

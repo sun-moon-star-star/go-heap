@@ -60,17 +60,19 @@ func GetPeriodTask(queue *DelayQueue, period string, task *Task) (*Task, error) 
 		return nil, err
 	}
 
-	return &Task{
-		RunUnixNano: task.RunUnixNano,
-		Data: &PeriodTask{
-			Queue:    queue,
-			Schedule: schedule,
+	periodTask := &PeriodTask{
+		Queue:    queue,
+		Schedule: schedule,
 
-			RawData:     task.Data,
-			RawCallBack: task.CallBack,
-			Period:      period,
-		},
-		CallBack: periodTaskCallBack,
+		RawData:     task.Data,
+		RawCallBack: task.CallBack,
+		Period:      period,
+	}
+
+	return &Task{
+		RunUnixNano: periodTask.GetNextRunUnixNano(),
+		Data:        periodTask,
+		CallBack:    periodTaskCallBack,
 	}, nil
 }
 
