@@ -19,6 +19,8 @@ func TestDelayQueue(t *testing.T) {
 			arr = append(arr, 1)
 		},
 	})
+
+	queue.Begin()
 	queue.Push(&Task{
 		RunUnixNano: time.Now().UnixNano() + 100000,
 		CallBack: func(interface{}) {
@@ -38,7 +40,6 @@ func TestDelayQueue(t *testing.T) {
 		},
 	})
 
-	queue.Begin()
 	queue.End()
 	queue.Join()
 	if len(arr) != 4 || arr[0] != 1 || arr[1] != 3 || arr[2] != 2 || arr[3] != 4 {
